@@ -1,0 +1,106 @@
+paths:
+  /restaurants:
+    get:
+      summary: Получить список всех ресторанов
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+  /restaurants/{id}/menu:
+    get:
+      summary: Получить меню ресторана
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID ресторана
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    restaurant_id:
+                      type: integer
+                      description: id ресторана, меню которого мы смотрим
+                    name:
+                      type: string
+                    price:
+                      type: integer
+  /orders:
+    post:
+      summary: Создать новый заказ
+      request body:
+        required: true #это значит, что без этого тела запрос не пройдет (400)
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                restaurant_id:
+                  type: integer
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      menu_item_id:
+                        type: integer
+                      quantity:
+                        type: integer
+      responses:
+        '201':
+          description: Заказ успешно создан
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order_id:
+                    type: integer
+                  status:
+                    type: string
+  /orders/{id}:
+    get:
+      summary: Клиент смотрит на статус своего заказа
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            description: id заказа
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orders_id:
+                    type: integer
+                  status:
+                    type: string
+                    description: статус заказа (new,cooking,delivering,done)
+                  total_price:
+                    type: integer
+        '400':
+          description: Заказ не найден
