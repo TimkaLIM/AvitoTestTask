@@ -34,5 +34,7 @@ func main() {
 		log.Fatal("База данных недоступна: ", err)
 	}
 	fmt.Println("База данных запущена...")
+	
+	ServerStart(db)
 
 }
