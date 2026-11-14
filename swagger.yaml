@@ -48,7 +48,7 @@ paths:
   /orders:
     post:
       summary: Создать новый заказ
-      request body:
+      requestBody:
         required: true #это значит, что без этого тела запрос не пройдет (400)
         content:
           application/json:
@@ -84,10 +84,10 @@ paths:
       parameters:
         - in: path
           name: id
+          description: id заказа
           required: true
           schema:
             type: integer
-            description: id заказа
       responses:
         '200':
           content:

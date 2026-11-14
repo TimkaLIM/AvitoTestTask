@@ -1,6 +1,7 @@
 package main
 
 import (
+	"AvitoTestTask/internal/api"
 	"database/sql"
 	"fmt"
 	"log"
@@ -33,6 +34,6 @@ func main() {
 	}
 	fmt.Println("База данных запущена...")
 
-	ServerStart(db)
+	api.ServerStart(db)
 
 }
