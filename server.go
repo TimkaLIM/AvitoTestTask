@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -21,6 +22,20 @@ func (a *Application) healthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write([]byte(`{"status":"ok"}`))
+}
+func echoHandler(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1048576)
+	var book map[string]any
+	if jsonErr := json.NewDecoder(r.Body).Decode(&book); jsonErr != nil {
+		log.Println("Ошибка декодинга echo:", jsonErr)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if jsonErr2 := json.NewEncoder(w).Encode(book); jsonErr2 != nil {
+		log.Println("Ошибка энкодинга echo: ", jsonErr2)
+		return
+	}
 }
 
 //HANDLER BLOCK END
@@ -65,6 +80,7 @@ func ServerStart(db *sql.DB) {
 		DB: db,
 	}
 	registerRoute(mux, "GET /health", app.healthHandler)
+	registerRoute(mux, "POST /echo", echoHandler)
 
 	//ОТКРЫТИЕ СЕРВЕРА
 	srv := &http.Server{

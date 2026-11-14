@@ -25,16 +25,14 @@ func main() {
 		return
 	}
 	defer db.Close()
-
 	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(time.Hour)
-
 	if err = db.Ping(); err != nil {
 		log.Fatal("База данных недоступна: ", err)
 	}
 	fmt.Println("База данных запущена...")
-	
+
 	ServerStart(db)
 
 }
