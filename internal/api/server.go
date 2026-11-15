@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -193,6 +194,32 @@ func (a *Application) AddOrder(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"order_is_created"}`))
 }
 
+func (a *Application) GetOrderStatus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	IDStr := r.PathValue("id")
+	id, err := strconv.Atoi(IDStr)
+	if err != nil {
+		log.Println("Ошибка перевода IDStr в число: ", err)
+		w.WriteHeader(400)
+		return
+	}
+	var status string
+	err = a.DB.QueryRowContext(r.Context(), "SELECT status FROM orders WHERE id = $1", id).Scan(&status)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Заказа нет — это 404!
+			w.WriteHeader(http.StatusNotFound) // 404
+			w.Write([]byte(`{"error":"order not found"}`))
+			return
+		}
+		log.Println("Ошибка извлечения статуса заказа: ", err)
+		w.WriteHeader(500)
+		return
+	}
+	fmt.Fprintf(w, `{"status":%s}`, status)
+
+}
+
 //HANDLER BLOCK END
 
 //MIDDLEWARE BLOCK START
@@ -238,6 +265,7 @@ func ServerStart(db *sql.DB) {
 	registerRoute(mux, "GET /restaurants", app.SelectRestaurants)
 	registerRoute(mux, "GET /restaurants/{id}/menu", app.SelectRestaurantMenu)
 	registerRoute(mux, "POST /orders", app.AddOrder)
+	registerRoute(mux, "GET /orders/{id}", app.GetOrderStatus)
 
 	//ОТКРЫТИЕ СЕРВЕРА
 	srv := &http.Server{
