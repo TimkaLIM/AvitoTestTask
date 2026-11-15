@@ -112,6 +112,87 @@ func (a *Application) SelectRestaurantMenu(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+func (a *Application) AddOrder(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var order models.CreateOrderRequest
+	err := json.NewDecoder(r.Body).Decode(&order)
+	if err != nil {
+		log.Println("Ошибка декодирования заказа: ", err)
+		w.WriteHeader(400)
+		return
+	}
+
+	//Проверка, что заказ не пустой
+	if len(order.Items) == 0 {
+		w.WriteHeader(400)
+		w.Write([]byte(`{"error":"empty order"}`))
+		return
+	}
+	//считаем итоговую сумму заказа
+	var MenuItemIDs []int
+	for _, value := range order.Items {
+		MenuItemIDs = append(MenuItemIDs, value.MenuItemID)
+	}
+	prices, err := a.DB.QueryContext(r.Context(), "SELECT id,price FROM menu_items WHERE id = ANY($1)", MenuItemIDs)
+	if err != nil {
+		log.Println("Ошибка SELECT prices: ", err)
+		w.WriteHeader(500)
+		return
+	}
+	defer prices.Close()
+
+	priceMap := make(map[int]int)
+	for prices.Next() {
+		var id, price int
+		err = prices.Scan(&id, &price)
+		if err != nil {
+			log.Println("Ошибка сканирования цены: ", err)
+			continue
+		}
+		priceMap[id] = price
+	}
+	var TotalPrice int
+	for _, item := range order.Items {
+		TotalPrice += priceMap[item.MenuItemID] * item.Quantity
+	}
+
+	//создаем транзакцию
+	tx, err := a.DB.BeginTx(r.Context(), nil)
+	if err != nil {
+		log.Println("Ошибка создания транзакции (BEGIN): ", err)
+		w.WriteHeader(500)
+		return
+	}
+	defer tx.Rollback()
+	//добавляем элемент в заказ
+	var orderID int
+	err = tx.QueryRowContext(r.Context(), "INSERT INTO orders (restaurant_id,user_id,status,total_price) VALUES($1,$2,$3,$4) RETURNING id",
+		order.RestaurantID, order.UserID, "new", TotalPrice).Scan(&orderID)
+	if err != nil {
+		log.Println("Ошибка создания заказа в orders: ", err)
+		w.WriteHeader(500)
+		return
+	}
+	//добавляем в таблице order_items все элементы
+	n := len(order.Items)
+	for i := 0; i < n; i++ {
+		_, err = tx.ExecContext(r.Context(), "INSERT INTO order_items (order_id,menu_item_id,quantity) VALUES($1,$2,$3)",
+			orderID, order.Items[i].MenuItemID, order.Items[i].Quantity)
+		if err != nil {
+			log.Println("Ошибка добавления элемента заказа: ", err)
+			w.WriteHeader(500)
+			return
+		}
+	}
+	err = tx.Commit()
+	if err != nil {
+		log.Println("Ошибка коммита транзакции: ", err)
+		w.WriteHeader(500)
+		return
+	}
+	w.Write([]byte(`{"status":"order_is_created"}`))
+}
+
 //HANDLER BLOCK END
 
 //MIDDLEWARE BLOCK START
@@ -156,6 +237,7 @@ func ServerStart(db *sql.DB) {
 	registerRoute(mux, "GET /health", app.healthHandler)
 	registerRoute(mux, "GET /restaurants", app.SelectRestaurants)
 	registerRoute(mux, "GET /restaurants/{id}/menu", app.SelectRestaurantMenu)
+	registerRoute(mux, "POST /orders", app.AddOrder)
 
 	//ОТКРЫТИЕ СЕРВЕРА
 	srv := &http.Server{

@@ -11,3 +11,14 @@ type MenuItem struct {
 	Name         string `json:"name"`
 	Price        int    `json:"price"`
 }
+
+type OrderItemRequest struct {
+	MenuItemID int `json:"menu_item_id"`
+	Quantity   int `json:"quantity"`
+}
+
+type CreateOrderRequest struct {
+	UserID       int                `json:"user_id"`
+	RestaurantID int                `json:"restaurant_id"`
+	Items        []OrderItemRequest `json:"items"`
+}
