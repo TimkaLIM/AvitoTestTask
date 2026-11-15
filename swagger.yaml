@@ -95,12 +95,68 @@ paths:
               schema:
                 type: object
                 properties:
-                  orders_id:
+                  id:
                     type: integer
                   status:
                     type: string
                     description: статус заказа (new,cooking,delivering,done)
                   total_price:
                     type: integer
-        '400':
+        '404':
           description: Заказ не найден
+  /orders/{id}/status:
+    patch:
+      summary: Ресторан меняет статус заказа
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  description: Новый статус заказа
+                  type: string
+      parameters:
+        - in: path
+          name: id
+          description: id заказа
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Статус заказа изменён
+        '404':
+          description: Заказ не найден
+  /restaurant/orders:
+    get:
+      summary: Возвращает массив всех заказов ресторана
+      parameters:
+        - in: query
+          name: restaurant_id
+          required: true
+          schema:
+            type: integer
+          description: ID ресторана
+        - in: query
+          name: status
+          required: false #ресторан может запросить все заказы, или только новые
+          schema:
+            type: string
+          description: статус заказа
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    status:
+                      type: string
+                    total_price:
+                      type: integer
