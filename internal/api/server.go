@@ -1,7 +1,6 @@
 package api
 
 import (
-	"AvitoTestTask/internal/models"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -55,7 +54,7 @@ func echoHandler(w http.ResponseWriter, r *http.Request) {
 
 //MIDDLEWARE BLOCK START
 
-func (rw *models.ResponseWriter) WriteHeader(code int) {
+func (rw *ResponseWriter) WriteHeader(code int) {
 	rw.StatusCode = code
 	rw.ResponseWriter.WriteHeader(code)
 }
@@ -67,7 +66,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		start := time.Now()
 		method := r.Method
 		path := r.URL.Path
-		w2 := &models.ResponseWriter{ResponseWriter: w, StatusCode: 200}
+		w2 := &ResponseWriter{ResponseWriter: w, StatusCode: 200}
 
 		//Передаем управление дальше в хэндлер
 		next.ServeHTTP(w2, r)

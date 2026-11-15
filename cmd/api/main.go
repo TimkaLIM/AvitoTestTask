@@ -1,6 +1,7 @@
 package main
 
 import (
+	"AvitoTestTask"
 	"AvitoTestTask/internal/api"
 	"database/sql"
 	"fmt"
@@ -34,6 +35,12 @@ func main() {
 	}
 	fmt.Println("База данных запущена...")
 
+	err = AvitoTestTask.RunMigrations(db)
+	if err != nil {
+		log.Println("Ошибка наложения миграций: ", err)
+		return
+
+	}
 	api.ServerStart(db)
 
 }

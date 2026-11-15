@@ -4,7 +4,7 @@
 
 База данных:
 + restaurants: id, title
-+ menu: id, restaurant_id, name, price
++ menu_items: id, restaurant_id, name, price
 + orders: id,restaurant_id,user_id,status,total_price
 + order_items: order_id,menu_item,quantity
 
