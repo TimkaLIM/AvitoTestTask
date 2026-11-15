@@ -1,6 +1,7 @@
 package api
 
 import (
+	"AvitoTestTask/internal/models"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"time"
 )
 
@@ -35,17 +37,77 @@ func (a *Application) healthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write([]byte(`{"status":"ok"}`))
 }
-func echoHandler(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, 1048576)
-	var book map[string]any
-	if jsonErr := json.NewDecoder(r.Body).Decode(&book); jsonErr != nil {
-		log.Println("Ошибка декодинга echo:", jsonErr)
-		w.WriteHeader(http.StatusBadRequest)
+
+func (a *Application) SelectRestaurants(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	restaurants, err := a.DB.QueryContext(r.Context(), "SELECT id,title FROM restaurants")
+	if err != nil {
+		log.Println("Ошибка select ресторанов: ", err)
+		w.WriteHeader(500)
 		return
 	}
+	defer restaurants.Close()
+	var restaurant_list []models.Restaurant
+
+	for restaurants.Next() {
+		restik := models.Restaurant{}
+		if err = restaurants.Scan(&restik.ID, &restik.Title); err != nil {
+			log.Println("Ошибка сканироваиня строки ресторана: ", err)
+			break
+		}
+		restaurant_list = append(restaurant_list, restik)
+	}
+	if err = restaurants.Err(); err != nil {
+		log.Println("Ошибка при чтении ресторанов: ", err)
+		w.WriteHeader(500)
+		return
+	}
+	err = json.NewEncoder(w).Encode(restaurant_list)
+	if err != nil {
+		log.Println("Ошибка энкодирования списка ресторанов: ", err)
+		w.WriteHeader(500)
+		return
+	}
+}
+
+func (a *Application) SelectRestaurantMenu(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	if jsonErr2 := json.NewEncoder(w).Encode(book); jsonErr2 != nil {
-		log.Println("Ошибка энкодинга echo: ", jsonErr2)
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		log.Println("Ошибка преобразования id из URL: ", err)
+		w.WriteHeader(400)
+		return
+	}
+
+	menu, err := a.DB.QueryContext(r.Context(), "SELECT id,restaurant_id,name,price FROM menu_items WHERE restaurant_id = $1", id)
+	if err != nil {
+		log.Println("Ошибка select элементов меню: ", err)
+		w.WriteHeader(500)
+		return
+	}
+	defer menu.Close()
+	var menu_list []models.MenuItem
+	for menu.Next() {
+
+		menu_item := models.MenuItem{}
+
+		if err = menu.Scan(&menu_item.ID, &menu_item.RestaurantID, &menu_item.Name, &menu_item.Price); err != nil {
+			log.Println("Ошибка сканирования элементов меню: ", err)
+			continue
+		}
+		menu_list = append(menu_list, menu_item)
+
+	}
+	if err = menu.Err(); err != nil {
+		log.Println("Ошибка при чтении меню: ", err)
+		w.WriteHeader(500)
+		return
+	}
+	if err = json.NewEncoder(w).Encode(menu_list); err != nil {
+		log.Println("Ошибка энкодирования элементов меню: ", err)
+		w.WriteHeader(500)
 		return
 	}
 }
@@ -92,7 +154,8 @@ func ServerStart(db *sql.DB) {
 		DB: db,
 	}
 	registerRoute(mux, "GET /health", app.healthHandler)
-	registerRoute(mux, "POST /echo", echoHandler)
+	registerRoute(mux, "GET /restaurants", app.SelectRestaurants)
+	registerRoute(mux, "GET /restaurants/{id}/menu", app.SelectRestaurantMenu)
 
 	//ОТКРЫТИЕ СЕРВЕРА
 	srv := &http.Server{

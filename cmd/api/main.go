@@ -39,8 +39,7 @@ func main() {
 	if err != nil {
 		log.Println("Ошибка наложения миграций: ", err)
 		return
-
 	}
-	api.ServerStart(db)
 
+	api.ServerStart(db)
 }
