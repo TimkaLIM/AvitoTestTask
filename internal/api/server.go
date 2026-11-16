@@ -217,6 +217,41 @@ func (a *Application) GetOrderStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprintf(w, `{"status":%s}`, status)
+}
+
+func (a *Application) updateStatus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var NewStatus models.PatchOrderStatusRequest
+	orderIDStr := r.PathValue("id")
+	orderID, err := strconv.Atoi(orderIDStr)
+	if err != nil {
+		log.Println("Ошибка перевода ID из строки в число: ", err)
+		w.WriteHeader(400)
+		return
+	}
+	err = json.NewDecoder(r.Body).Decode(&NewStatus)
+	if err != nil {
+		log.Println("Ошибка декодирования нового статуса: ", err)
+		w.WriteHeader(400)
+		return
+	}
+	result, err := a.DB.ExecContext(r.Context(), "UPDATE orders SET status = $1 WHERE id = $2", NewStatus.Status, orderID)
+	if err != nil {
+		log.Println("Ошибка изменения статуса: ", err)
+		w.WriteHeader(500)
+		return
+	}
+
+	// Проверяем, обновилось ли что-то
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		w.WriteHeader(http.StatusNotFound) // 404
+		w.Write([]byte(`{"error":"order not found"}`))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"updated"}`))
 
 }
 

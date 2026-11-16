@@ -22,3 +22,7 @@ type CreateOrderRequest struct {
 	RestaurantID int                `json:"restaurant_id"`
 	Items        []OrderItemRequest `json:"items"`
 }
+
+type PatchOrderStatusRequest struct {
+	Status string `json:"status"`
+}
