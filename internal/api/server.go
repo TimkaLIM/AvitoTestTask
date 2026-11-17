@@ -348,9 +348,11 @@ func ServerStart(db *sql.DB) {
 		DB: db,
 	}
 	registerRoute(mux, "GET /health", app.healthHandler)
+
 	registerRoute(mux, "GET /restaurants", app.SelectRestaurants)
 	registerRoute(mux, "GET /restaurants/{id}/menu", app.SelectRestaurantMenu)
 	registerRoute(mux, "POST /orders", app.AddOrder)
+	registerRoute(mux, "PATCH /orders/{id}/status", app.updateStatus)
 	registerRoute(mux, "GET /orders/{id}", app.GetOrderStatus)
 	registerRoute(mux, "GET /restaurant/orders", app.SelectRestaurantOrders)
 
