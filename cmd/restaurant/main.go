@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -16,9 +17,19 @@ func main() {
 	if apiURL == "" {
 		apiURL = "http://localhost:8080" // для локального запуска
 	}
+	restaurantIDStr := os.Getenv("RESTAURANT_ID")
+	if restaurantIDStr == "" {
+		restaurantIDStr = "1" // По умолчанию работаем с первым рестораном
+	}
+	restaurantID, err := strconv.Atoi(restaurantIDStr)
+	if err != nil {
+		log.Println("Ошибка перевода ID ресторана в число: ", err)
+		return
+	}
+
 	for {
 		fmt.Println("Делаем запрос на поиск заказов...")
-		url1 := fmt.Sprintf("%s/restaurant/orders?restaurant_id=1&status=new", apiURL)
+		url1 := fmt.Sprintf("%s/restaurant/orders?restaurant_id=%d&status=new", apiURL, restaurantID)
 		resp, err := http.Get(url1)
 		if err != nil {
 			log.Println("Ошибка запроса к заказам: ", err)
@@ -30,34 +41,63 @@ func main() {
 			log.Println("Ошибка декодирования: ", err)
 			continue
 		}
+		resp.Body.Close()
 		for _, value := range orders {
-			if value.Status == "cooking" || value.Status == "delivering" || value.Status == "pass" {
+
+			url := fmt.Sprintf("%s/orders/%d/status", apiURL, value.OrderID)
+			client := &http.Client{Timeout: 5 * time.Second}
+
+			//готовка
+
+			req, err := http.NewRequest("PATCH", url, strings.NewReader(`{"status": "cooking"}`))
+			if err != nil {
+				log.Println("Ошибка отправки PATCH запроса: ", err)
+				return
+			}
+			req.Header.Set("Content-Type", "application/json")
+			resp2, err := client.Do(req)
+			if err != nil {
+				log.Println("Ошибка отправки запроса: ", err)
 				continue
 			}
-			url := fmt.Sprintf("%s/orders/%d/status", apiURL, value.OrderID)
-			//готовка
-			_, err = http.NewRequest("PATCH", url, strings.NewReader("cooking"))
-			if err != nil {
-				log.Println("Ошибка отправки PATCH запроса: ", err)
-				return
-			}
-			fmt.Printf("Заказ с id = %d готовится...", value.OrderID)
+			resp2.Body.Close()
+			fmt.Printf("Заказ с id = %d готовится...\n", value.OrderID)
 			time.Sleep(3 * time.Second)
+
 			//доставка
-			_, err = http.NewRequest("PATCH", url, strings.NewReader("delivering"))
+
+			req, err = http.NewRequest("PATCH", url, strings.NewReader(`{"status": "delivering"}`))
 			if err != nil {
 				log.Println("Ошибка отправки PATCH запроса: ", err)
 				return
 			}
-			fmt.Printf("Заказ с id = %d отправлен на доставку...", value.OrderID)
+			req.Header.Set("Content-Type", "application/json")
+
+			resp2, err = client.Do(req)
+			if err != nil {
+				log.Println("Ошибка отправки запроса: ", err)
+				continue
+			}
+			resp2.Body.Close()
+			fmt.Printf("Заказ с id = %d отправлен в доствку...\n", value.OrderID)
 			time.Sleep(3 * time.Second)
+
 			//клиент получил заказ
-			_, err = http.NewRequest("PATCH", url, strings.NewReader("pass"))
+
+			req, err = http.NewRequest("PATCH", url, strings.NewReader(`{"status": "done"}`))
 			if err != nil {
 				log.Println("Ошибка отправки PATCH запроса: ", err)
 				return
 			}
-			fmt.Printf("Заказ с id = %d доставлен!", value.OrderID)
+			req.Header.Set("Content-Type", "application/json")
+
+			resp2, err = client.Do(req)
+			if err != nil {
+				log.Println("Ошибка отправки запроса: ", err)
+				continue
+			}
+			resp2.Body.Close()
+			fmt.Printf("Заказ с id = %d доставлен!\n", value.OrderID)
 			time.Sleep(3 * time.Second)
 		}
 

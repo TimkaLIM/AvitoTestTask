@@ -27,6 +27,7 @@ services:
       dockerfile: Dockerfile.restaurant
     environment:
       API_URL: "http://api:8080"
+      RESTAURANT_ID: "1"
     depends_on:
       - api
 volumes:

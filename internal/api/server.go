@@ -281,6 +281,7 @@ func (a *Application) SelectRestaurantOrders(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(500)
 		return
 	}
+	defer rows.Close()
 	var SelectRestaurants []models.RestaurantOrders
 	for rows.Next() {
 		var restaurant models.RestaurantOrders
