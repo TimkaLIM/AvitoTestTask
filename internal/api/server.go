@@ -152,6 +152,11 @@ func (a *Application) AddOrder(w http.ResponseWriter, r *http.Request) {
 		}
 		priceMap[id] = price
 	}
+	if prices.Err() != nil {
+		log.Println("Ошибка при чтении цен: ", err)
+		w.WriteHeader(500)
+		return
+	}
 	var TotalPrice int
 	for _, item := range order.Items {
 		TotalPrice += priceMap[item.MenuItemID] * item.Quantity
@@ -241,7 +246,6 @@ func (a *Application) updateStatus(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		return
 	}
-
 	// Проверяем, обновилось ли что-то
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
@@ -249,9 +253,56 @@ func (a *Application) updateStatus(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error":"order not found"}`))
 		return
 	}
-
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"updated"}`))
+}
+
+func (a *Application) SelectRestaurantOrders(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	restaurantIDStr := r.URL.Query().Get("restaurant_id")
+	restaurantID, err := strconv.Atoi(restaurantIDStr)
+	if err != nil {
+		log.Println("Ошибка перевода ID из строки в число: ", err)
+		w.WriteHeader(500)
+		return
+	}
+	status := r.URL.Query().Get("status")
+	query := "SELECT id, user_id, total_price FROM orders WHERE restaurant_id = $1"
+	args := []any{restaurantID} // restaurantID должен быть int!
+
+	if status != "" {
+		query += " AND status = $2"
+		args = append(args, status)
+	}
+
+	rows, err := a.DB.QueryContext(r.Context(), query, args...)
+	if err != nil {
+		log.Println("Ошибка сканирования заказов №1: ", err)
+		w.WriteHeader(500)
+		return
+	}
+	var SelectRestaurants []models.RestaurantOrders
+	for rows.Next() {
+		var restaurant models.RestaurantOrders
+		err = rows.Scan(&restaurant.OrderID, &restaurant.UserID, &restaurant.TotalPrice)
+		if err != nil {
+			log.Println("Ошибка сканирования заказов №1 ", err)
+			w.WriteHeader(500)
+			return
+		}
+		SelectRestaurants = append(SelectRestaurants, restaurant)
+	}
+	if rows.Err() != nil {
+		log.Println("Ошибка при чтении заказов ресторана: ", rows.Err())
+		w.WriteHeader(500)
+		return
+	}
+	err = json.NewEncoder(w).Encode(SelectRestaurants)
+	if err != nil {
+		log.Println("Ошибка энкодинга ресторанов: ", err)
+		w.WriteHeader(500)
+		return
+	}
 
 }
 
@@ -301,6 +352,7 @@ func ServerStart(db *sql.DB) {
 	registerRoute(mux, "GET /restaurants/{id}/menu", app.SelectRestaurantMenu)
 	registerRoute(mux, "POST /orders", app.AddOrder)
 	registerRoute(mux, "GET /orders/{id}", app.GetOrderStatus)
+	registerRoute(mux, "GET /restaurant/orders", app.SelectRestaurantOrders)
 
 	//ОТКРЫТИЕ СЕРВЕРА
 	srv := &http.Server{

@@ -26,3 +26,10 @@ type CreateOrderRequest struct {
 type PatchOrderStatusRequest struct {
 	Status string `json:"status"`
 }
+
+type RestaurantOrders struct {
+	OrderID    int    `json:"order_id"`
+	UserID     int    `json:"user_id"`
+	Status     string `json:"status"`
+	TotalPrice int    `json:"total_price"`
+}
