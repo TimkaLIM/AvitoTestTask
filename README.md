@@ -61,3 +61,5 @@ POST /orders
 ```
 📝 Автор
 [Тимур Фаттахов] — [yoyo9000 / https://github.com/TimkaLIM]
+
+[Оригинальное задание: https://github.com/avito-tech/tech-internship/blob/main/Tech%20Internships/Backend/Backend-trainee-assignment-autumn-2026/Backend-trainee-assignment-autumn-2026.md]
